@@ -30,8 +30,10 @@
   --composer-idle-scale: 0.93;
   --composer-active-scale: 1;
   --composer-send-scale: 1.08;
-  --composer-active-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  --composer-send-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --composer-bounce-distance: 8px;
+  --composer-bounce-overshoot: -3px;
+  --composer-active-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --composer-send-ease: cubic-bezier(0.34, 1.56, 0.64, 1);
   --composer-active-duration: 320ms;
   --composer-send-duration: 520ms;
 }
@@ -167,8 +169,11 @@ body::before {
 .ComposeMessage-module__wrapper > * {
   position: relative;
   z-index: 3;
+  transform: translateY(0);
   scale: var(--composer-idle-scale);
-  transition: scale var(--composer-active-duration) var(--composer-active-ease) !important;
+  transition:
+    scale var(--composer-active-duration) var(--composer-active-ease),
+    transform var(--composer-active-duration) var(--composer-active-ease) !important;
 }
 
 .mx_BasicMessageComposer:focus-within {
@@ -203,7 +208,15 @@ body::before {
 
 /* Unshrink only when editor has content (paragraph loses is-empty class when typing) */
 .ComposeMessage-module__wrapper:has(.ProseMirror p:not(.is-empty)) > * {
+  animation: none;
+  transform: translateY(0);
   scale: var(--composer-active-scale);
+}
+
+/* When the editor clears after send, bounce downward then settle back into idle scale */
+.ComposeMessage-module__wrapper:has(.ProseMirror p.is-empty) > * {
+  scale: var(--composer-idle-scale);
+  animation: composerSentBounce var(--composer-send-duration) var(--composer-send-ease) both;
 }
 
 .ComposeMessage-module__messageInputContainer:focus-within,
@@ -364,16 +377,24 @@ button.BrandSendButton-module__container[aria-disabled="true"] {
 }
 
 .MessageAttachment-module__imageAttachment,
-img.MessageAttachment-module__imageAttachment,
-.message-container.type-emoji .preserving-whitespace,
-.message-container.type-emoji div.preserving-whitespace,
-.type-emoji .preserving-whitespace {
+img.MessageAttachment-module__imageAttachment {
   animation: mediaMessageIn 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
   will-change: transform, opacity, filter;
   transform: translateZ(0);
   transition:
     transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     box-shadow 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    opacity 220ms ease !important;
+}
+
+.message-container.type-emoji .preserving-whitespace,
+.message-container.type-emoji div.preserving-whitespace,
+.type-emoji .preserving-whitespace {
+  animation: messageBubbleIn 1000ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  will-change: transform, opacity, filter;
+  transform: translateZ(0);
+  transition:
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     opacity 220ms ease !important;
 }
 
@@ -761,18 +782,11 @@ div.ThreadListItem-module__internal:hover,
   }
 }
 
-@keyframes composerSendBurst {
-  0% {
-    transform: scale(var(--composer-active-scale));
-  }
-
-  45% {
-    transform: scale(var(--composer-send-scale));
-  }
-
-  100% {
-    transform: scale(var(--composer-active-scale));
-  }
+@keyframes composerSentBounce {
+  0%   { transform: translateY(0); }
+  28%  { transform: translateY(var(--composer-bounce-distance)); }
+  65%  { transform: translateY(var(--composer-bounce-overshoot)); }
+  100% { transform: translateY(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
